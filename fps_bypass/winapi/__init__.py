@@ -2,7 +2,6 @@
 # Meant to be treaded as a sort of black box.
 from __future__ import annotations
 
-from .exceptions import *
 from .constants import *
 from .structures import *
 
