@@ -12,7 +12,11 @@ from ctypes.wintypes import (
     DWORD,
 )
 
-from dataclasses import dataclass
+from typing import (
+    NamedTuple,
+    Generator,
+    Callable,
+)
 
 win32 = ctypes.windll.kernel32
 
@@ -114,6 +118,8 @@ def terminate_process(handle: Handle) -> None:
 
 
 DEFAULT_ACCESS = PROCESS_QUERY_INFORMATION | SYNCHRONISE
+
+
 def open_process(process_id: int, access: int = DEFAULT_ACCESS) -> Handle:
     """Opens a process by process ID."""
 
@@ -143,7 +149,89 @@ def has_uac() -> bool:
     return bool(ctypes.windll.shell32.IsUserAnAdmin())
 
 
-def create_process(path: str) -> Handle:
+class ProcessCreationResult(NamedTuple):
+    id: int
+    handle: Handle
+
+
+def create_process(path: str) -> ProcessCreationResult:
     """Creates a new process located at the given path."""
 
     startup_info = STARTUPINFOA()
+    process_info = PROCESS_INFORMATION()
+
+    if not win32.CreateProcessA(
+        path.encode(),
+        None,
+        None,
+        None,
+        False,
+        0,
+        None,
+        None,
+        ctypes.byref(startup_info),
+        ctypes.byref(process_info),
+    ):
+        raise OSError(f"Failed to create process: {get_os_error_fmt()}")
+
+    # Close the thread handle, we don't need it.
+    Handle(process_info.hThread).close()
+
+    return ProcessCreationResult(
+        process_info.dwProcessId, Handle(process_info.hProcess)
+    )
+
+
+class ModuleInfo(NamedTuple):
+    base: int
+    size: int
+
+
+FilterLike = Callable[[str], bool]
+ModuleGenerator = Generator[ModuleInfo, None, None]
+MODULE_SIZE = 1024
+
+
+def get_modules(handle: Handle, filter: FilterLike = lambda x: True) -> ModuleGenerator:
+    """Generator giving the base address and size of each module in the given process
+    based on a filter condition."""
+
+    modules = (HMODULE * MODULE_SIZE)()
+    mem_used = DWORD()
+
+    if not win32.EnumProcessModules(
+        _make_raw_handle(handle),
+        ctypes.byref(modules),
+        MODULE_SIZE * ctypes.sizeof(HMODULE),
+        ctypes.byref(mem_used),
+    ):
+        raise OSError(f"Failed to enumerate process modules: {get_os_error_fmt()}")
+
+    iterations = mem_used.value // ctypes.sizeof(HMODULE)
+
+    for i in range(iterations):
+        module = modules[i]
+
+        api_module_name = (ctypes.c_char * MAX_PATH)()
+        if not win32.GetModuleBaseNameA(
+            _make_raw_handle(handle),
+            module,
+            ctypes.byref(api_module_name),
+            MAX_PATH,
+        ):
+            continue
+
+        api_module_name = api_module_name.value.decode()
+        if not filter(api_module_name):
+            continue
+
+        module_info = MODULEINFO()
+        if not win32.GetModuleInformation(
+            _make_raw_handle(handle),
+            module,
+            ctypes.byref(module_info),
+            ctypes.sizeof(MODULEINFO),
+        ):
+            continue
+
+        yield ModuleInfo(module_info.lpBaseOfDll, module_info.SizeOfImage)

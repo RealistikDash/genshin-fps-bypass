@@ -19,4 +19,3 @@ with winapi.open_process(genshin_id) as genshin_handle:
 
     print("Terminating Genshin Impact...")
     winapi.terminate_process(genshin_handle)
-

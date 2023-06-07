@@ -13,6 +13,7 @@ __all__ = (
     "PROCESSENTRY32",
     "PROCESS_INFORMATION",
     "STARTUPINFOA",
+    "MODULEINFO",
 )
 
 
@@ -39,6 +40,7 @@ class PROCESS_INFORMATION(ctypes.Structure):
         ("dwThreadId", DWORD),
     ]
 
+
 class STARTUPINFOA(ctypes.Structure):
     _fields_ = [
         ("cb", DWORD),
@@ -59,4 +61,12 @@ class STARTUPINFOA(ctypes.Structure):
         ("hStdInput", HANDLE),
         ("hStdOutput", HANDLE),
         ("hStdError", HANDLE),
+    ]
+
+
+class MODULEINFO(ctypes.Structure):
+    _fields_ = [
+        ("lpBaseOfDll", ctypes.c_void_p),
+        ("SizeOfImage", DWORD),
+        ("EntryPoint", ctypes.c_void_p),
     ]
