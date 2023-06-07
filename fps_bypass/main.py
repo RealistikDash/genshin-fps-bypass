@@ -1,78 +1,64 @@
 import winapi
 import memory
+import genshin
 import time
 
-# GENSHIN_EXE = "GenshinImpact.exe"
 GENSHIN_PATH = r"C:\Program Files\Genshin Impact\Genshin Impact game\GenshinImpact.exe"
-FPS_SIGNATURE = memory.Signature(
-    0xE8,
-    None,
-    None,
-    None,
-    None,
-    0x85,
-    0xC0,
-    0x7E,
-    0x07,
-    0xE8,
-    None,
-    None,
-    None,
-    None,
-    0xEB,
-    0x05,
-)
-VSYNC_SIGNATURE = memory.Signature(
-    0xE8, None, None, None, None, 0x8B, 0xE8, 0x49, 0x8B, 0x1E
-)
 
 if not winapi.has_uac():
     print("UAC is not enabled.")
     exit(1)
 
-print("Opening Genshin Impact...")
-genshin_process = winapi.create_process(GENSHIN_PATH)
+# Check if genshin is running.
+genshin_info = genshin.get_running_game()
 
-print(f"Process ID: {genshin_process.id}")
-
-time.sleep(2)
-
-results = []
-
-while not len(results) == 2:
-    results = list(
-        winapi.get_modules(
-            genshin_process.handle,
-            lambda x: x in ("UnityPlayer.dll", "UserAssembly.dll"),
-        )
-    )
-
-    time.sleep(0.2)
-
-unity_player, user_assembly = results
-
-if unity_player.name == "UserAssembly.dll":
-    unity_player, user_assembly = user_assembly, unity_player
-
-print(f"UnityPlayer.dll: {unity_player!r}")
-print(f"UserAssembly.dll: {user_assembly!r}")
-
-print("Reading UserAssembly.dll...")
-user_assembly_buffer = winapi.read_memory(
-    genshin_process.handle,
-    user_assembly.base,
-    user_assembly.size,
-)
-
-print("Finding FPS signature...")
-start_time = time.perf_counter()
-fps_offset = memory.signature_scan(user_assembly_buffer, FPS_SIGNATURE)
-print(f"Time taken: {time.perf_counter() - start_time:.2f}s")
-
-if fps_offset is None:
-    print("Failed to find FPS signature.")
+if genshin_info:
+    genshin_info.handle.close()
+    print("Genshin Impact is already running. Please close it and try again.")
     exit(1)
 
-print(f"Found FPS signature at offset {fps_offset} ({(fps_offset/user_assembly.size) * 100 :.2f}% read).")
+print("Starting Genshin Impact...")
 
-genshin_process.handle.close()
+genshin_info = genshin.start_game(GENSHIN_PATH)
+
+print(f"Started Genshin Impact with PID {genshin_info.id}.")
+
+print("Waiting for modules...")
+modules = genshin.wait_for_modules(genshin_info)
+
+print("Found modules:")
+print(f"UnityPlayer.dll: {modules.unity_player}")
+print(f"UserAssembly.dll: {modules.user_assembly}")
+
+print("Searching for pointers...")
+pointers = genshin.get_memory_pointers(genshin_info, modules)
+
+if not pointers:
+    print("Failed to find offsets. Perhaps the game has updated?")
+    exit(1)
+
+print("Found offsets:")
+print(f"FPS: {pointers.fps}")
+print(f"VSync: {pointers.vsync}")
+print(f"Estimated: {pointers.estimated}")
+
+state = genshin.FPSState(
+    genshin=genshin_info,
+    modules=modules,
+    pointers=pointers,
+)
+
+while state.get_fps() == -1:
+    time.sleep(0.2)
+
+print(f"Current FPS: {state.get_fps()}")
+print(f"Current VSync: {state.get_vsync()}")
+
+
+print("Enforcing FPS...")
+while True:
+    if state.get_fps() != 144:
+        print("Setting FPS to 144")
+        state.set_vsync(False)
+        state.set_fps(144)
+    time.sleep(1)

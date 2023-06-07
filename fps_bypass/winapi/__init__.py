@@ -42,6 +42,11 @@ class Handle:
     def __exit__(self, *args) -> None:
         self.close()
 
+    # Unreliable but a last resort.
+    def __del__(self) -> None:
+        if self.is_set():
+            self.close()
+
     def close(self) -> None:
         """Closes the handle, marking the object as unusable."""
         if not win32.CloseHandle(self._handle):
