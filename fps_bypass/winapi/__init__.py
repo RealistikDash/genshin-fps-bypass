@@ -18,6 +18,7 @@ from typing import (
 )
 
 win32 = ctypes.windll.kernel32
+psapi = ctypes.windll.psapi
 
 
 class Handle:
@@ -28,6 +29,9 @@ class Handle:
 
     def __init__(self, handle: int) -> None:
         self._handle = handle
+
+    def __repr__(self) -> str:
+        return f"Handle({self._handle})"
 
     def __enter__(self) -> Handle:
         if not self.is_set():
@@ -182,6 +186,7 @@ def create_process(path: str) -> ProcessCreationResult:
 
 
 class ModuleInfo(NamedTuple):
+    name: str
     base: int
     size: int
 
@@ -198,7 +203,7 @@ def get_modules(handle: Handle, filter: FilterLike = lambda x: True) -> ModuleGe
     modules = (HMODULE * MODULE_SIZE)()
     mem_used = DWORD()
 
-    if not win32.EnumProcessModules(
+    if not psapi.EnumProcessModules(
         _make_raw_handle(handle),
         ctypes.byref(modules),
         MODULE_SIZE * ctypes.sizeof(HMODULE),
@@ -208,13 +213,11 @@ def get_modules(handle: Handle, filter: FilterLike = lambda x: True) -> ModuleGe
 
     iterations = mem_used.value // ctypes.sizeof(HMODULE)
 
-    for i in range(iterations):
-        module = modules[i]
-
+    for module in modules[:iterations]:
         api_module_name = (ctypes.c_char * MAX_PATH)()
-        if not win32.GetModuleBaseNameA(
+        if not psapi.GetModuleBaseNameA(
             _make_raw_handle(handle),
-            module,
+            HMODULE(module),
             ctypes.byref(api_module_name),
             MAX_PATH,
         ):
@@ -225,12 +228,48 @@ def get_modules(handle: Handle, filter: FilterLike = lambda x: True) -> ModuleGe
             continue
 
         module_info = MODULEINFO()
-        if not win32.GetModuleInformation(
+        if not psapi.GetModuleInformation(
             _make_raw_handle(handle),
-            module,
+            HMODULE(module),
             ctypes.byref(module_info),
             ctypes.sizeof(MODULEINFO),
         ):
             continue
 
-        yield ModuleInfo(module_info.lpBaseOfDll, module_info.SizeOfImage)
+        yield ModuleInfo(
+            api_module_name,
+            module_info.lpBaseOfDll,
+            module_info.SizeOfImage,
+        )
+
+
+def read_memory(handle: Handle, address: int, size: int) -> bytes:
+    """Reads memory from the given process at the given address."""
+
+    buffer = (ctypes.c_char * size)()
+
+    bytes_read = DWORD()
+    if not win32.ReadProcessMemory(
+        _make_raw_handle(handle),
+        ctypes.c_void_p(address),
+        ctypes.byref(buffer),
+        size,
+        ctypes.byref(bytes_read),
+    ):
+        raise OSError(f"Failed to read memory: {get_os_error_fmt()}")
+
+    return buffer.raw[: bytes_read.value]
+
+
+def write_memory(handle: Handle, address: int, data: bytes) -> None:
+    """Writes memory to the given process at the given address."""
+
+    bytes_written = DWORD()
+    if not win32.WriteProcessMemory(
+        _make_raw_handle(handle),
+        ctypes.c_void_p(address),
+        data,
+        len(data),
+        ctypes.byref(bytes_written),
+    ):
+        raise OSError(f"Failed to write memory: {get_os_error_fmt()}")
