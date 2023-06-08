@@ -12,6 +12,8 @@ if os.name != "nt":
     exit(ERR_FAILURE)
 
 import threading
+import logging
+import sys
 
 import winapi
 import genshin
@@ -24,7 +26,36 @@ if not winapi.has_uac():
     exit(ERR_FAILURE)
 
 
-print(f"FPS Bypass v{utils.make_version_string(VERSION)}")
+from rich.console import Console
+from rich.progress import Progress
+from rich.progress import TextColumn, BarColumn, TaskProgressColumn
+from rich.logging import RichHandler
+from rich.traceback import install
+
+console = Console()
+install(console=console)
+
+console.print(
+    f"FPS Bypass v{utils.make_version_string(VERSION)}",
+    style="bold underline blue",
+    highlight=False,
+)
+
+is_debug_mode = "debug" in sys.argv
+
+logging.basicConfig(
+    level=logging.DEBUG if is_debug_mode else logging.INFO,
+    format="%(message)s",
+    datefmt="[%X]",
+    handlers=[
+        RichHandler(
+            rich_tracebacks=True,
+            console=console,
+        ),
+    ],
+)
+
+logger = logging.getLogger("rich")
 
 # Load config as we need the path.
 fps_config = config.read_config()
@@ -56,38 +87,59 @@ if genshin_info:
 
     utils.wait_for(lambda: not genshin.is_game_running())
 
-print("Starting Genshin Impact...")
+with Progress(
+    TextColumn("[progress.description]{task.description}"),
+    BarColumn(),
+    TaskProgressColumn(),
+    transient=True,
+    console=console,
+) as progress:
+    task = progress.add_task("[blue]Starting Genshin Impact", start=False, total=4)
+    genshin_info = genshin.start_game(fps_config.genshin_path)
 
-genshin_info = genshin.start_game(fps_config.genshin_path)
+    console.log(
+        f":white_check_mark: Started Genshin Impact with PID {genshin_info.id}.",
+    )
+    progress.update(task, advance=1)
 
-print(f"Started Genshin Impact with PID {genshin_info.id}.")
+    logger.debug("Waiting for modules...")
+    modules = genshin.wait_for_modules(genshin_info)
 
-print("Waiting for modules...")
-modules = genshin.wait_for_modules(genshin_info)
+    logger.debug("Found modules:")
+    logger.debug(f"UnityPlayer.dll: {modules.unity_player!r}")
+    logger.debug(f"UserAssembly.dll: {modules.user_assembly!r}")
 
-print("Found modules:")
-print(f"UnityPlayer.dll: {modules.unity_player}")
-print(f"UserAssembly.dll: {modules.user_assembly}")
+    console.log(
+        f":white_check_mark: Found {len(modules)} required modules.",
+    )
+    progress.update(task, advance=1)
 
-print("Searching for pointers...")
-pointers = genshin.get_memory_pointers(genshin_info, modules)
+    logger.debug("Searching for pointers...")
+    pointers = genshin.get_memory_pointers(genshin_info, modules)
 
-if not pointers:
-    print("Failed to find offsets. Perhaps the game has updated?")
-    exit(ERR_FAILURE)
+    if not pointers:
+        logger.fatal(":no_entry: Failed to find offsets. Perhaps the game has updated?")
+        exit(ERR_FAILURE)
 
-print("Found offsets:")
-print(f"FPS: {pointers.fps}")
-print(f"VSync: {pointers.vsync}")
-print(f"Estimated: {pointers.estimated}")
+    logger.debug(f"Found pointers: {pointers!r}")
+    console.log(
+        f":white_check_mark: Found the required memory pointers.",
+    )
+    progress.update(task, advance=1)
 
-state = genshin.FPSState(
-    genshin=genshin_info,
-    modules=modules,
-    pointers=pointers,
-)
+    state = genshin.FPSState(
+        genshin=genshin_info,
+        modules=modules,
+        pointers=pointers,
+    )
 
-utils.wait_for(lambda: state.get_fps() != -1)
+    logger.debug("Waiting for game to load...")
+
+    utils.wait_for(lambda: state.get_fps() != -1)
+    console.log(
+        f":white_check_mark: Game started!",
+    )
+    progress.update(task, advance=1)
 
 enforce_fps = True
 
@@ -102,7 +154,7 @@ def fps_enforcement_thread() -> None:
 
         time.sleep(0.1)
 
-    print("FPS Bypass is no longer running.")
+    logging.warning("FPS Bypass is no longer running.")
 
 
 enforcement_thread = threading.Thread(
