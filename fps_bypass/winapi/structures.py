@@ -1,13 +1,13 @@
 # Ctypes definitions for WinAPI structures.
-from .constants import *
+from __future__ import annotations
 
 import ctypes
-from ctypes.wintypes import (
-    DWORD,
-    ULONG,
-    LONG,
-    HANDLE,
-)
+from ctypes.wintypes import DWORD
+from ctypes.wintypes import HANDLE
+from ctypes.wintypes import LONG
+from ctypes.wintypes import ULONG
+
+from .constants import *
 
 __all__ = (
     "PROCESSENTRY32",

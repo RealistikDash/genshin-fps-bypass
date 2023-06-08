@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 __all__ = (
     "PROCESS_VM_READ",
     "PROCESS_VM_WRITE",

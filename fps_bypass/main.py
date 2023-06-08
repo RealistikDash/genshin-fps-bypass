@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 
 VERSION = (0, 1, 0)

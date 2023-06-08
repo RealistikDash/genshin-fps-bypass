@@ -1,4 +1,5 @@
 # Tools to assist with memory reading and writing.
+from __future__ import annotations
 
 
 class Signature:

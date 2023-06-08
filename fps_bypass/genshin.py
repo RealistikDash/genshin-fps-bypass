@@ -1,12 +1,12 @@
 # Game specific logic.
 from __future__ import annotations
 
-import winapi
-import memory
-
 import time
-from typing import NamedTuple
 from dataclasses import dataclass
+from typing import NamedTuple
+
+import memory
+import winapi
 
 GENSHIN_EXE = "GenshinImpact.exe"
 
@@ -30,7 +30,16 @@ FPS_SIGNATURE = memory.Signature(
     0x05,
 )
 VSYNC_SIGNATURE = memory.Signature(
-    0xE8, None, None, None, None, 0x8B, 0xE8, 0x49, 0x8B, 0x1E
+    0xE8,
+    None,
+    None,
+    None,
+    None,
+    0x8B,
+    0xE8,
+    0x49,
+    0x8B,
+    0x1E,
 )
 
 
@@ -48,7 +57,7 @@ def wait_for_modules(genshin: GenshinInfo) -> GenshinModules:
                 winapi.get_modules(
                     genshin.handle,
                     lambda x: x in ("UnityPlayer.dll", "UserAssembly.dll"),
-                )
+                ),
             )
         except OSError:
             pass
@@ -133,7 +142,8 @@ def get_memory_pointers(
 
     # Try the estimated offset first.
     if memory.signature_match(
-        user_assembly_buffer[ESTIMATE_FPS_OFFSET : len(FPS_SIGNATURE)], FPS_SIGNATURE
+        user_assembly_buffer[ESTIMATE_FPS_OFFSET : len(FPS_SIGNATURE)],
+        FPS_SIGNATURE,
     ):
         buffer_offset = ESTIMATE_FPS_OFFSET
     else:
@@ -172,7 +182,9 @@ def get_memory_pointers(
     while unity_player_buffer[rip] in (0xE8, 0xE9):
         rip += (
             int.from_bytes(
-                unity_player_buffer[rip + 1 : rip + 5], "little", signed=True
+                unity_player_buffer[rip + 1 : rip + 5],
+                "little",
+                signed=True,
             )
             + 5
         )
@@ -200,7 +212,9 @@ def get_memory_pointers(
 
     rip += 7
     vsync_ptr = int.from_bytes(
-        unity_player_buffer[rip + 2 : rip + 6], "little", signed=False
+        unity_player_buffer[rip + 2 : rip + 6],
+        "little",
+        signed=False,
     ) + int.from_bytes(ptr, "little", signed=False)
 
     return MemoryPointers(
@@ -211,7 +225,8 @@ def get_memory_pointers(
 
 
 def get_vsync_offset(
-    genshin: GenshinInfo, unity_player: winapi.ModuleInfo
+    genshin: GenshinInfo,
+    unity_player: winapi.ModuleInfo,
 ) -> int | None:
     # Try the estimated offset first.
     small_buffer = winapi.read_memory(

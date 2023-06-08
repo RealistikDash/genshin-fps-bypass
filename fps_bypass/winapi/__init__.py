@@ -2,20 +2,15 @@
 # Meant to be treaded as a sort of black box.
 from __future__ import annotations
 
+import ctypes
+from ctypes.wintypes import DWORD
+from ctypes.wintypes import HMODULE
+from typing import Callable
+from typing import Generator
+from typing import NamedTuple
+
 from .constants import *
 from .structures import *
-
-import ctypes
-from ctypes.wintypes import (
-    HMODULE,
-    DWORD,
-)
-
-from typing import (
-    NamedTuple,
-    Generator,
-    Callable,
-)
 
 win32 = ctypes.windll.kernel32
 psapi = ctypes.windll.psapi
@@ -90,7 +85,7 @@ def process_id_by_name(name: str) -> int | None:
         win32.CreateToolhelp32Snapshot(
             TH32CS_SNAPPROCESS,
             0,
-        )
+        ),
     )
 
     with snapshot:
@@ -98,12 +93,13 @@ def process_id_by_name(name: str) -> int | None:
         process_entry.dwSize = ctypes.sizeof(PROCESSENTRY32)
 
         process = win32.Process32First(
-            _make_raw_handle(snapshot), ctypes.byref(process_entry)
+            _make_raw_handle(snapshot),
+            ctypes.byref(process_entry),
         )
 
         if not process:
             raise OSError(
-                f"Failed to get process entry. Error code: {get_os_error_fmt()}"
+                f"Failed to get process entry. Error code: {get_os_error_fmt()}",
             )
 
         while process:
@@ -111,7 +107,8 @@ def process_id_by_name(name: str) -> int | None:
                 return process_entry.th32ProcessID
 
             process = win32.Process32Next(
-                _make_raw_handle(snapshot), ctypes.byref(process_entry)
+                _make_raw_handle(snapshot),
+                ctypes.byref(process_entry),
             )
 
     return None
@@ -147,7 +144,10 @@ def get_process_path(handle: Handle) -> str:
     output = (ctypes.c_char * MAX_PATH)()
 
     if not win32.QueryFullProcessImageNameA(
-        _make_raw_handle(handle), 0, output, ctypes.byref(DWORD(MAX_PATH))
+        _make_raw_handle(handle),
+        0,
+        output,
+        ctypes.byref(DWORD(MAX_PATH)),
     ):
         raise OSError(f"Failed to get process path: {get_os_error_fmt()}")
 
@@ -187,7 +187,8 @@ def create_process(path: str) -> ProcessCreationResult:
     Handle(process_info.hThread).close()
 
     return ProcessCreationResult(
-        process_info.dwProcessId, Handle(process_info.hProcess)
+        process_info.dwProcessId,
+        Handle(process_info.hProcess),
     )
 
 
@@ -288,7 +289,9 @@ def get_main_refresh_rate() -> int:
     # grabbed the refresh rate.
     dev_mode = (ctypes.c_char * 156)()  # sizeof(DEVMODEA) = 156
     if not winuser.EnumDisplaySettingsA(
-        None, ENUM_CURRENT_SETTINGS, ctypes.byref(dev_mode)
+        None,
+        ENUM_CURRENT_SETTINGS,
+        ctypes.byref(dev_mode),
     ):
         raise OSError(f"Failed to get display settings: {get_os_error_fmt()}")
 
