@@ -19,6 +19,7 @@ from typing import (
 
 win32 = ctypes.windll.kernel32
 psapi = ctypes.windll.psapi
+winuser = ctypes.windll.user32
 
 
 class Handle:
@@ -278,3 +279,16 @@ def write_memory(handle: Handle, address: int, data: bytes) -> None:
         ctypes.byref(bytes_written),
     ):
         raise OSError(f"Failed to write memory: {get_os_error_fmt()}")
+
+
+def get_main_refresh_rate() -> int:
+    """Gets the refresh rate of the main monitor"""
+
+    # I didn't want to convert the entire DEVMODEA struct, so I just
+    # grabbed the refresh rate.
+    dev_mode = (ctypes.c_char * 156)() # sizeof(DEVMODEA) = 156
+    if not winuser.EnumDisplaySettingsA(None, ENUM_CURRENT_SETTINGS, ctypes.byref(dev_mode)):
+        raise OSError(f"Failed to get display settings: {get_os_error_fmt()}")
+
+    # Refresh rate is a DWORD at offset 120.
+    return int.from_bytes(dev_mode[120:124], "little", signed=False)

@@ -5,6 +5,7 @@ __all__ = (
     "SYNCHRONISE",
     "TH32CS_SNAPPROCESS",
     "MAX_PATH",
+    "ENUM_CURRENT_SETTINGS",
 )
 
 # Read Process Memory
@@ -15,6 +16,9 @@ SYNCHRONISE = 0x00100000
 
 # Create Snapshot
 TH32CS_SNAPPROCESS = 0x00000002
+
+# Enum display settings (https://www.pinvoke.net/default.aspx/user32/enumdisplaysettings.html?diff=y)
+ENUM_CURRENT_SETTINGS = -1
 
 # General Use
 MAX_PATH = 260

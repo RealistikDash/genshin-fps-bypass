@@ -104,31 +104,6 @@ class MemoryPointers(NamedTuple):
     estimated: bool
 
 
-# def get_memory_offsets(
-#    genshin: GenshinInfo, modules: GenshinModules
-# ) -> MemoryOffsets | None:
-#    fps_offset = get_fps_offset(genshin, modules)
-#
-#    if fps_offset is None:
-#        return None
-#
-#    vsync_offset = get_vsync_offset(genshin, modules.unity_player)
-#
-#    if vsync_offset is None:
-#        return None
-#
-#    # Metrics to check when updating the estimated offsets.
-#    estimated = (
-#        fps_offset == ESTIMATE_FPS_OFFSET and vsync_offset == ESTIMATE_VSYNC_OFFSET
-#    )
-#
-#    return MemoryOffsets(
-#        fps=fps_offset,
-#        vsync=vsync_offset,
-#        estimated=estimated,
-#    )
-
-
 # Memory location estimation (based on 7/6/2023 3.7)
 ESTIMATE_FPS_OFFSET = 93590149
 ESTIMATE_VSYNC_OFFSET = 18528083

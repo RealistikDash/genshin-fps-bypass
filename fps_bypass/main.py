@@ -1,13 +1,21 @@
+import os
+
+
+ERR_SUCCESS = 0
+ERR_FAILURE = 1
+
+if os.name != "nt":
+    print("This script is only compatible with Windows.")
+    exit(ERR_FAILURE)
+
 import winapi
-import memory
 import genshin
 import time
-
-GENSHIN_PATH = r"C:\Program Files\Genshin Impact\Genshin Impact game\GenshinImpact.exe"
+import config
 
 if not winapi.has_uac():
     print("UAC is not enabled.")
-    exit(1)
+    exit(ERR_FAILURE)
 
 # Check if genshin is running.
 genshin_info = genshin.get_running_game()
@@ -35,7 +43,7 @@ pointers = genshin.get_memory_pointers(genshin_info, modules)
 
 if not pointers:
     print("Failed to find offsets. Perhaps the game has updated?")
-    exit(1)
+    exit(ERR_FAILURE)
 
 print("Found offsets:")
 print(f"FPS: {pointers.fps}")
@@ -56,9 +64,21 @@ print(f"Current VSync: {state.get_vsync()}")
 
 
 print("Enforcing FPS...")
-while True:
-    if state.get_fps() != 144:
-        print("Setting FPS to 144")
-        state.set_vsync(False)
-        state.set_fps(144)
-    time.sleep(1)
+try:
+    while True:
+        if state.get_fps() != 144:
+            print("Setting FPS to 144")
+            state.set_vsync(False)
+            state.set_fps(144)
+        time.sleep(1)
+except KeyboardInterrupt:
+    print("Shutting down...")
+    # Cleanup handles
+    state.genshin.handle.close()
+except OSError:
+    print("Genshin Impact has closed.")  # likely
+    # Cleanup handles
+    state.genshin.handle.close()
+
+print("Bye!")
+exit(0)
