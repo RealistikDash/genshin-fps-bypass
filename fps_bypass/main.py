@@ -95,12 +95,14 @@ enforce_fps = True
 def fps_enforcement_thread() -> None:
     assert fps_config is not None, "Started enforcement thread without config."
 
-    while enforce_fps:
+    while enforce_fps and genshin.is_game_running():
         if state.get_fps() != fps_config.target_fps:
             state.set_vsync(False)
             state.set_fps(fps_config.target_fps)
 
         time.sleep(0.1)
+
+    print("FPS Bypass is no longer running.")
 
 
 enforcement_thread = threading.Thread(

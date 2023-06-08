@@ -1,2 +1,4 @@
+# Only install these if you are planning on contributing or developing
+# the project.  Otherwise, just use the requirements.txt file.
 -r main.txt
 pre-commit

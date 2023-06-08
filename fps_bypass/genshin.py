@@ -8,7 +8,8 @@ from typing import NamedTuple
 import memory
 import winapi
 
-GENSHIN_EXE = "GenshinImpact.exe"
+GENSHIN_OS_EXE = "GenshinImpact.exe"
+GENSHIN_CN_EXE = "YuanShen.exe"
 
 # Signatures taken from https://github.com/34736384/genshin-fps-unlock
 FPS_SIGNATURE = memory.Signature(
@@ -92,11 +93,16 @@ def start_game(path: str) -> GenshinInfo:
 
 
 def is_game_running() -> bool:
-    return bool(winapi.process_id_by_name(GENSHIN_EXE))
+    return bool(
+        winapi.process_id_by_name(GENSHIN_OS_EXE)
+        or winapi.process_id_by_name(GENSHIN_CN_EXE),
+    )
 
 
 def get_running_game() -> GenshinInfo | None:
-    process_id = winapi.process_id_by_name(GENSHIN_EXE)
+    process_id = winapi.process_id_by_name(GENSHIN_OS_EXE) or winapi.process_id_by_name(
+        GENSHIN_CN_EXE,
+    )
 
     if not process_id:
         return None
@@ -119,11 +125,9 @@ class MemoryPointers(NamedTuple):
 
 # Memory location estimation (based on 7/6/2023 3.7)
 ESTIMATE_FPS_OFFSET = 93590149
-ESTIMATE_VSYNC_OFFSET = 18528083
+NULLPTR = bytearray(8)
 
 
-# This is once again stolen from https://github.com/34736384/genshin-fps-unlock
-# This is just a direct Python port of the C++ code.
 def get_memory_pointers(
     genshin: GenshinInfo,
     modules: GenshinModules,
@@ -139,13 +143,17 @@ def get_memory_pointers(
 
     # FPS.
     buffer_offset = 0
+    estimate_metric = False
 
     # Try the estimated offset first.
     if memory.signature_match(
-        user_assembly_buffer[ESTIMATE_FPS_OFFSET : len(FPS_SIGNATURE)],
+        user_assembly_buffer[
+            ESTIMATE_FPS_OFFSET : ESTIMATE_FPS_OFFSET + len(FPS_SIGNATURE)
+        ],
         FPS_SIGNATURE,
     ):
         buffer_offset = ESTIMATE_FPS_OFFSET
+        estimate_metric = True
     else:
         # Worst case (~4s).
         buffer_offset = memory.signature_scan(user_assembly_buffer, FPS_SIGNATURE)
@@ -153,7 +161,8 @@ def get_memory_pointers(
     if not buffer_offset:
         return None
 
-    # WTF.
+    # This is once again stolen from https://github.com/34736384/genshin-fps-unlock
+    # This is just a direct Python port of the C++ code.
     rip = buffer_offset
     rip += (
         int.from_bytes(user_assembly_buffer[rip + 1 : rip + 5], "little", signed=True)
@@ -168,7 +177,7 @@ def get_memory_pointers(
 
     genshin_ptr = user_assembly.base + rip
 
-    while not (ptr := winapi.read_memory(genshin.handle, genshin_ptr, 8)):
+    while (ptr := winapi.read_memory(genshin.handle, genshin_ptr, 8)) == NULLPTR:
         time.sleep(0.2)
 
     rip = int.from_bytes(ptr, "little", signed=False) - modules.unity_player.base
@@ -207,7 +216,7 @@ def get_memory_pointers(
     rax = int.from_bytes(unity_player_buffer[rip + 3 : rip + 7], "little", signed=False)
     ppvsync = rax + rip + 7 + unity_player.base
 
-    while not (ptr := winapi.read_memory(genshin.handle, ppvsync, 8)):
+    while (ptr := winapi.read_memory(genshin.handle, ppvsync, 8)) == NULLPTR:
         time.sleep(0.2)
 
     rip += 7
@@ -220,31 +229,8 @@ def get_memory_pointers(
     return MemoryPointers(
         fps=fps_ptr,
         vsync=vsync_ptr,
-        estimated=False,
+        estimated=estimate_metric,
     )
-
-
-def get_vsync_offset(
-    genshin: GenshinInfo,
-    unity_player: winapi.ModuleInfo,
-) -> int | None:
-    # Try the estimated offset first.
-    small_buffer = winapi.read_memory(
-        genshin.handle,
-        unity_player.base + ESTIMATE_VSYNC_OFFSET,
-        len(VSYNC_SIGNATURE),
-    )
-
-    if memory.signature_match(small_buffer, VSYNC_SIGNATURE):
-        return ESTIMATE_VSYNC_OFFSET
-
-    unity_player_buffer = winapi.read_memory(
-        genshin.handle,
-        unity_player.base,
-        unity_player.size,
-    )
-
-    return memory.signature_scan(unity_player_buffer, VSYNC_SIGNATURE)
 
 
 @dataclass
