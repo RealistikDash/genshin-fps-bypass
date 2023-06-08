@@ -1,7 +1,8 @@
 # Configuration management.
+from __future__ import annotations
+
 import json
 import os
-
 from dataclasses import dataclass
 
 CONFIG_VERSION = 1
@@ -72,5 +73,5 @@ def read_config() -> Configuration | None:
     if not os.path.exists(f"{config_path}\\config.json"):
         return None
 
-    with open(f"{config_path}\\config.json", "r") as f:
+    with open(f"{config_path}\\config.json") as f:
         return config_from_json(f.read())
