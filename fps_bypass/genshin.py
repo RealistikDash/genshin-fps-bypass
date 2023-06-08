@@ -82,6 +82,10 @@ def start_game(path: str) -> GenshinInfo:
     )
 
 
+def is_game_running() -> bool:
+    return bool(winapi.process_id_by_name(GENSHIN_EXE))
+
+
 def get_running_game() -> GenshinInfo | None:
     process_id = winapi.process_id_by_name(GENSHIN_EXE)
 
@@ -115,18 +119,14 @@ def get_memory_pointers(
     genshin: GenshinInfo,
     modules: GenshinModules,
 ) -> MemoryPointers | None:
+    # TODO: Optimise memory by not loading the whole thing at once.
     user_assembly = modules.user_assembly
-    user_assembly_buffer = winapi.read_memory(
+    user_assembly_buffer = winapi.read_memory(  # ~370MB
         genshin.handle,
         user_assembly.base,
         user_assembly.size,
     )
     unity_player = modules.unity_player
-    unity_player_buffer = winapi.read_memory(
-        genshin.handle,
-        unity_player.base,
-        unity_player.size,
-    )
 
     # FPS.
     buffer_offset = 0
@@ -154,12 +154,20 @@ def get_memory_pointers(
         + 7
     )
 
+    del user_assembly_buffer
+
     genshin_ptr = user_assembly.base + rip
 
     while not (ptr := winapi.read_memory(genshin.handle, genshin_ptr, 8)):
         time.sleep(0.2)
 
     rip = int.from_bytes(ptr, "little", signed=False) - modules.unity_player.base
+
+    unity_player_buffer = winapi.read_memory(  # ~30MB
+        genshin.handle,
+        unity_player.base,
+        unity_player.size,
+    )
 
     while unity_player_buffer[rip] in (0xE8, 0xE9):
         rip += (

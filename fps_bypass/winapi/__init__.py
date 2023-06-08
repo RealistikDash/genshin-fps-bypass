@@ -286,8 +286,10 @@ def get_main_refresh_rate() -> int:
 
     # I didn't want to convert the entire DEVMODEA struct, so I just
     # grabbed the refresh rate.
-    dev_mode = (ctypes.c_char * 156)() # sizeof(DEVMODEA) = 156
-    if not winuser.EnumDisplaySettingsA(None, ENUM_CURRENT_SETTINGS, ctypes.byref(dev_mode)):
+    dev_mode = (ctypes.c_char * 156)()  # sizeof(DEVMODEA) = 156
+    if not winuser.EnumDisplaySettingsA(
+        None, ENUM_CURRENT_SETTINGS, ctypes.byref(dev_mode)
+    ):
         raise OSError(f"Failed to get display settings: {get_os_error_fmt()}")
 
     # Refresh rate is a DWORD at offset 120.

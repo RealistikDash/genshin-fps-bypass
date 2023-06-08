@@ -1,5 +1,6 @@
 import os
 
+VERSION = (0, 1, 0)
 
 ERR_SUCCESS = 0
 ERR_FAILURE = 1
@@ -8,26 +9,54 @@ if os.name != "nt":
     print("This script is only compatible with Windows.")
     exit(ERR_FAILURE)
 
+import threading
+
 import winapi
 import genshin
 import time
+import utils
 import config
 
 if not winapi.has_uac():
-    print("UAC is not enabled.")
+    print("Administrator privileges are required to run this script.")
     exit(ERR_FAILURE)
 
-# Check if genshin is running.
+
+print(f"FPS Bypass v{utils.make_version_string(VERSION)}")
+
+# Load config as we need the path.
+fps_config = config.read_config()
+
+if not fps_config:
+    print("Starting first time setup.")
+    print("Please open Genshin Impact.")
+
+    instance = utils.wait_for(genshin.get_running_game)
+
+    # Create config.
+    game_path = winapi.get_process_path(instance.handle)
+    fps_value = utils.get_default_fps()
+
+    fps_config = config.Configuration(
+        genshin_path=game_path,
+        target_fps=fps_value,
+    )
+
+    config.write_config(fps_config)
+
+
+# Check if genshin is running (we need to start the game for the handle).
 genshin_info = genshin.get_running_game()
 
 if genshin_info:
     genshin_info.handle.close()
-    print("Genshin Impact is already running. Please close it and try again.")
-    exit(1)
+    print("Genshin Impact is already running. Please close it to continue.")
+
+    utils.wait_for(lambda: not genshin.is_game_running())
 
 print("Starting Genshin Impact...")
 
-genshin_info = genshin.start_game(GENSHIN_PATH)
+genshin_info = genshin.start_game(fps_config.genshin_path)
 
 print(f"Started Genshin Impact with PID {genshin_info.id}.")
 
@@ -56,29 +85,58 @@ state = genshin.FPSState(
     pointers=pointers,
 )
 
-while state.get_fps() == -1:
-    time.sleep(0.2)
+utils.wait_for(lambda: state.get_fps() != -1)
 
-print(f"Current FPS: {state.get_fps()}")
-print(f"Current VSync: {state.get_vsync()}")
+enforce_fps = True
 
 
-print("Enforcing FPS...")
+def fps_enforcement_thread() -> None:
+    assert fps_config is not None, "Started enforcement thread without config."
+
+    while enforce_fps:
+        if state.get_fps() != fps_config.target_fps:
+            state.set_vsync(False)
+            state.set_fps(fps_config.target_fps)
+
+        time.sleep(0.1)
+
+
+enforcement_thread = threading.Thread(
+    target=fps_enforcement_thread,
+    daemon=True,
+)
+
+enforcement_thread.start()
+
+print("FPS Bypass is now running.")
+
 try:
     while True:
-        if state.get_fps() != 144:
-            print("Setting FPS to 144")
-            state.set_vsync(False)
-            state.set_fps(144)
-        time.sleep(1)
-except KeyboardInterrupt:
-    print("Shutting down...")
-    # Cleanup handles
-    state.genshin.handle.close()
-except OSError:
-    print("Genshin Impact has closed.")  # likely
-    # Cleanup handles
-    state.genshin.handle.close()
+        if not genshin.is_game_running():
+            break
 
-print("Bye!")
-exit(0)
+        print(f"Target FPS: {fps_config.target_fps}")
+        new_fps = input(">>> ")
+
+        try:
+            new_fps = int(new_fps)
+        except ValueError:
+            print("Please enter a valid number as the target FPS.")
+            continue
+
+        if not (1 <= new_fps <= 1000):
+            print("Invalid FPS value. Please enter a value between 1 and 1000.")
+            continue
+
+        fps_config.target_fps = new_fps
+        config.write_config(fps_config)
+
+except KeyboardInterrupt:
+    print("Stopping FPS Bypass...")
+
+enforce_fps = False
+enforcement_thread.join()
+state.genshin.handle.close()
+
+
+exit(ERR_SUCCESS)

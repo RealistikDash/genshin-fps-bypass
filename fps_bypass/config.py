@@ -7,6 +7,7 @@ from dataclasses import dataclass
 CONFIG_VERSION = 1
 FPS_CONFIG_DIR = "gfps_bypass"
 
+
 # NOTE: All future values (after `target_fps`) must have a default value.
 @dataclass
 class Configuration:
@@ -22,6 +23,7 @@ def _get_config_path() -> str:
 
     return f"{app_data}\\{FPS_CONFIG_DIR}"
 
+
 def _ensure_config_dir() -> None:
     config_path = _get_config_path()
     if not os.path.exists(config_path):
@@ -35,7 +37,7 @@ def config_as_json(config: Configuration) -> str:
         "data": {
             "genshin_path": config.genshin_path,
             "target_fps": config.target_fps,
-        }
+        },
     }
 
     return json.dumps(data, indent=4)
