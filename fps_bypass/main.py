@@ -57,43 +57,67 @@ logging.basicConfig(
 
 logger = logging.getLogger("rich")
 
+
+def _make_progress_bar() -> Progress:
+    return Progress(
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TaskProgressColumn(),
+        transient=True,
+        console=console,
+    )
+
+
 # Load config as we need the path.
 fps_config = config.read_config()
 
 if not fps_config:
-    print("Starting first time setup.")
-    print("Please open Genshin Impact.")
+    with _make_progress_bar() as progress:
+        task = progress.add_task("[blue]First Time Setup", start=False, total=2)
+        console.log(":grey_question: Please open Genshin Impact to continue.")
 
-    instance = utils.wait_for(genshin.get_running_game)
+        instance = utils.wait_for(genshin.get_running_game)
 
-    # Create config.
-    game_path = winapi.get_process_path(instance.handle)
-    fps_value = utils.get_default_fps()
+        console.log(
+            f":white_check_mark: Found Genshin Impact with PID {instance.id}.",
+        )
+        progress.update(task, advance=1)
 
-    fps_config = config.Configuration(
-        genshin_path=game_path,
-        target_fps=fps_value,
-    )
+        # Create config.
+        game_path = winapi.get_process_path(instance.handle)
+        fps_value = utils.get_default_fps()
 
-    config.write_config(fps_config)
+        logger.debug(f"Game path: {game_path!r}")
+        logger.debug(f"Default FPS: {fps_value}")
+
+        fps_config = config.Configuration(
+            genshin_path=game_path,
+            target_fps=fps_value,
+        )
+
+        config.write_config(fps_config)
+
+        console.log(
+            f":white_check_mark: Configuration complete!",
+        )
+        progress.update(task, advance=1)
 
 
 # Check if genshin is running (we need to start the game for the handle).
 genshin_info = genshin.get_running_game()
 
 if genshin_info:
-    genshin_info.handle.close()
-    print("Genshin Impact is already running. Please close it to continue.")
+    with _make_progress_bar() as progress:
+        genshin_info.handle.close()
+        task = progress.add_task("[red]Close Game", start=False, total=None)
 
-    utils.wait_for(lambda: not genshin.is_game_running())
+        console.log(
+            ":grey_question: Genshin Impact is already running. Please close it to continue.",
+        )
 
-with Progress(
-    TextColumn("[progress.description]{task.description}"),
-    BarColumn(),
-    TaskProgressColumn(),
-    transient=True,
-    console=console,
-) as progress:
+        utils.wait_for(lambda: not genshin.is_game_running())
+
+with _make_progress_bar() as progress:
     task = progress.add_task("[blue]Starting Genshin Impact", start=False, total=4)
     genshin_info = genshin.start_game(fps_config.genshin_path)
 
