@@ -31,10 +31,12 @@ if not winapi.has_uac():
 
 from rich.console import Console
 from rich.progress import Progress
-from rich.progress import TextColumn, BarColumn, TaskProgressColumn
+from rich.progress import TextColumn
+from rich.progress import BarColumn
+from rich.progress import TaskProgressColumn
 from rich.logging import RichHandler
 from rich.traceback import install
-from rich.prompt import IntPrompt, InvalidResponse
+from rich.prompt import IntPrompt
 
 console = Console()
 install(console=console)
