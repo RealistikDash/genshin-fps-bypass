@@ -2,11 +2,14 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from dataclasses import dataclass
 
 CONFIG_VERSION = 1
 FPS_CONFIG_DIR = "gfps_bypass"
+
+logger = logging.getLogger("rich")
 
 
 # NOTE: All future values (after `target_fps`) must have a default value.
@@ -73,8 +76,13 @@ def read_config() -> Configuration | None:
     if not os.path.exists(f"{config_path}\\config.json"):
         return None
 
-    with open(f"{config_path}\\config.json") as f:
-        return config_from_json(f.read())
+    try:
+        with open(f"{config_path}\\config.json") as f:
+            return config_from_json(f.read())
+    except Exception:
+        logger.debug("Failed to read the config file. Deleting it.", exc_info=True)
+        delete_config()
+        return None
 
 
 def delete_config() -> None:
