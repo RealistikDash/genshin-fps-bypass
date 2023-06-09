@@ -75,3 +75,12 @@ def read_config() -> Configuration | None:
 
     with open(f"{config_path}\\config.json") as f:
         return config_from_json(f.read())
+
+
+def delete_config() -> None:
+    config_path = _get_config_path()
+    if not os.path.exists(config_path):
+        return
+
+    os.remove(f"{config_path}\\config.json")
+    os.rmdir(config_path)

@@ -1,6 +1,7 @@
 # Game specific logic.
 from __future__ import annotations
 
+import os
 import time
 from dataclasses import dataclass
 from typing import NamedTuple
@@ -83,7 +84,10 @@ class GenshinInfo(NamedTuple):
     handle: winapi.Handle
 
 
-def start_game(path: str) -> GenshinInfo:
+def start_game(path: str) -> GenshinInfo | None:
+    if not os.path.exists(path):
+        return None
+
     game = winapi.create_process(path)
     return GenshinInfo(
         id=game.id,

@@ -1,11 +1,15 @@
 # General usage utility functions.
 from __future__ import annotations
 
+import sys
 import time
 from typing import Callable
 from typing import TypeVar
 
 import winapi
+
+
+NO_PAUSE = "no-pause" in sys.argv
 
 
 def make_version_string(version: tuple[int, int, int]) -> str:
@@ -42,3 +46,10 @@ def get_default_fps() -> int:
     # On some configs, this is weird. Clamp it to a reasonable range.
     refresh_rate = clamp(refresh_rate, 30, 240)
     return refresh_rate
+
+
+def exit_pause() -> None:
+    """Allows the user time to read a potential error message before closing."""
+
+    if not NO_PAUSE:
+        input("Press enter to exit...")

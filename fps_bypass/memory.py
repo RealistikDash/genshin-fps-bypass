@@ -34,6 +34,12 @@ class Signature:
         return self.pattern == __o.pattern
 
 
+# TODO: Add "we have a JIT at home" pattern compilation using eval.
+# It will generate a function specialised for the pattern, perhaps using
+# a condition for each byte, a group of bytes, or a combination using
+# substr?
+
+
 # TODO: Optimise this. 4s is a bit ehh.
 def signature_scan(buffer: bytes, signature: Signature) -> int | None:
     """Scans a buffer for a signature."""

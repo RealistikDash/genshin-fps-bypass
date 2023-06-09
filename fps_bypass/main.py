@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 
-VERSION = (0, 1, 0)
+VERSION = (0, 1, 1)
 
 ERR_SUCCESS = 0
 ERR_FAILURE = 1
@@ -26,6 +26,7 @@ import config
 
 if not winapi.has_uac():
     print("Administrator privileges are required to run this script.")
+    utils.exit_pause()
     exit(ERR_FAILURE)
 
 
@@ -127,6 +128,13 @@ with _make_progress_bar() as progress:
     task = progress.add_task("[blue]Starting Genshin Impact", start=False, total=4)
     genshin_info = genshin.start_game(fps_config.genshin_path)
 
+    if not genshin_info:
+        console.log(":no_entry: Could not find the Genshin Impact installation.")
+        console.log(":grey_question: Please restart the bypass to redo the setup.")
+        config.delete_config()
+        utils.exit_pause()
+        exit(ERR_FAILURE)
+
     console.log(
         f":white_check_mark: Started Genshin Impact with PID {genshin_info.id}.",
     )
@@ -148,7 +156,8 @@ with _make_progress_bar() as progress:
     pointers = genshin.get_memory_pointers(genshin_info, modules)
 
     if not pointers:
-        logger.fatal(":no_entry: Failed to find offsets. Perhaps the game has updated?")
+        console.log(":no_entry: Failed to find offsets. Perhaps the game has updated?")
+        utils.exit_pause()
         exit(ERR_FAILURE)
 
     logger.debug(f"Found pointers: {pointers!r}")
