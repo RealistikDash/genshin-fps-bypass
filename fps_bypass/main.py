@@ -7,6 +7,9 @@ VERSION = (0, 1, 0)
 ERR_SUCCESS = 0
 ERR_FAILURE = 1
 
+MIN_FPS = 1
+MAX_FPS = 2147483647
+
 if os.name != "nt":
     print("This script is only compatible with Windows.")
     exit(ERR_FAILURE)
@@ -31,6 +34,7 @@ from rich.progress import Progress
 from rich.progress import TextColumn, BarColumn, TaskProgressColumn
 from rich.logging import RichHandler
 from rich.traceback import install
+from rich.prompt import IntPrompt, InvalidResponse
 
 console = Console()
 install(console=console)
@@ -172,9 +176,10 @@ def fps_enforcement_thread() -> None:
     assert fps_config is not None, "Started enforcement thread without config."
 
     while enforce_fps and genshin.is_game_running():
-        if state.get_fps() != fps_config.target_fps:
+        if (old_fps := state.get_fps()) != fps_config.target_fps:
             state.set_vsync(False)
             state.set_fps(fps_config.target_fps)
+            logger.debug(f"FPS change {old_fps} -> {fps_config.target_fps}.")
 
         time.sleep(0.1)
 
@@ -188,31 +193,40 @@ enforcement_thread = threading.Thread(
 
 enforcement_thread.start()
 
-print("FPS Bypass is now running.")
+console.log(":white_check_mark: FPS Bypass started!")
+console.log(":information_source: Press Ctrl+C to stop.")
+console.log(f":information_source: Current target FPS: {fps_config.target_fps}.")
+console.log(f":grey_question: Enter a new target FPS:")
+prompt = IntPrompt(
+    console=console,
+)
 
 try:
     while True:
         if not genshin.is_game_running():
             break
 
-        print(f"Target FPS: {fps_config.target_fps}")
-        new_fps = input(">>> ")
+        new_fps = prompt.ask(
+            prompt="[blue]FPS Bypass >>[/blue]",
+            default=utils.get_default_fps(),
+            show_default=False,
+        )
 
-        try:
-            new_fps = int(new_fps)
-        except ValueError:
-            print("Please enter a valid number as the target FPS.")
-            continue
-
-        if not (1 <= new_fps <= 1000):
-            print("Invalid FPS value. Please enter a value between 1 and 1000.")
+        if not (MIN_FPS <= new_fps <= MAX_FPS):
+            console.log(
+                f":no_entry: Invalid FPS value. Must be between {MIN_FPS} and {MAX_FPS}.",
+            )
             continue
 
         fps_config.target_fps = new_fps
         config.write_config(fps_config)
 
+        console.log(
+            f":white_check_mark: Target FPS set to {new_fps}.",
+        )
+
 except KeyboardInterrupt:
-    print("Stopping FPS Bypass...")
+    console.log("Stopping FPS Bypass...")
 
 enforce_fps = False
 enforcement_thread.join()
