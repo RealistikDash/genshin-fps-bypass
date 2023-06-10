@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 
-VERSION = (0, 1, 1)
+VERSION = (0, 1, 2)
 
 ERR_SUCCESS = 0
 ERR_FAILURE = 1

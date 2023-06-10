@@ -153,7 +153,7 @@ def get_memory_pointers(
     estimate_metric = False
 
     # Try the estimated offset first.
-    if memory.signature_match(
+    if False and memory.signature_match(
         user_assembly_buffer[
             ESTIMATE_FPS_OFFSET : ESTIMATE_FPS_OFFSET + len(FPS_SIGNATURE)
         ],
