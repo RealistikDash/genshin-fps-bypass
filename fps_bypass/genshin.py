@@ -44,6 +44,9 @@ VSYNC_SIGNATURE = memory.Signature(
     0x1E,
 )
 
+FPS_SIGNATURE.compile()
+VSYNC_SIGNATURE.compile()
+
 
 class GenshinModules(NamedTuple):
     unity_player: winapi.ModuleInfo

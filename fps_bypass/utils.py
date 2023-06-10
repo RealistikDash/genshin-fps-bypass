@@ -53,3 +53,31 @@ def exit_pause() -> None:
 
     if not NO_PAUSE:
         input("Press enter to exit...")
+
+
+def human_readable_bytes(size: float) -> str:
+    """Converts a quantity of bytes to a human-readable format."""
+
+    if size < 1024:
+        return f"{size}B"
+
+    size /= 1024
+    if size < 1024:
+        return f"{size:.2f}KB"
+
+    size /= 1024
+    if size < 1024:
+        return f"{size:.2f}MB"
+
+    size /= 1024
+    return f"{size:.2f}GB"
+
+
+def human_readable_time(seconds: float) -> str:
+    """Converts a quantity of seconds to a human-readable format."""
+
+    if seconds < 60:
+        return f"{seconds:.2f}s"
+
+    seconds /= 60
+    return f"{seconds:.2f}m"
