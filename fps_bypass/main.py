@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 
-VERSION = (0, 1, 2)
+VERSION = (0, 1, 3)
 
 ERR_SUCCESS = 0
 ERR_FAILURE = 1
@@ -186,15 +186,21 @@ enforce_fps = True
 def fps_enforcement_thread() -> None:
     assert fps_config is not None, "Started enforcement thread without config."
 
-    while enforce_fps and genshin.is_game_running():
-        if (old_fps := state.get_fps()) != fps_config.target_fps:
-            state.set_vsync(False)
-            state.set_fps(fps_config.target_fps)
-            logger.debug(f"FPS change {old_fps} -> {fps_config.target_fps}.")
+    try:
+        while enforce_fps and genshin.is_game_running():
+            if (old_fps := state.get_fps()) != fps_config.target_fps:
+                state.set_vsync(False)
+                state.set_fps(fps_config.target_fps)
+                logger.debug(f"FPS change {old_fps} -> {fps_config.target_fps}.")
 
-        time.sleep(0.1)
+            time.sleep(0.1)
+
+    # Game is likely closed.
+    except OSError:
+        logger.debug("Game closed (likely).")
 
     logging.warning("FPS Bypass is no longer running.")
+    os._exit(ERR_SUCCESS)
 
 
 enforcement_thread = threading.Thread(
