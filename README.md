@@ -13,9 +13,9 @@
  Using the FPS bypass is as simple as downloading the latest executable from [GitHub releases](https://github.com/RealistikDash/genshin-fps-bypass/releases/).
  Next, open it and you will be guided through the simple initial setup procedure.
  
- After this, you you may open the game directly through the FPS bypass.
+ After this, you may open the game directly through the FPS bypass.
 
 ## Implementation Details
 This project is written entirely in the Python programming language, using the WindowsAPI for memory.
 
-If you wish to find out more about the inner workings, you may run the executable with the `debug` flag.
+If you wish to find out more about the inner workings, you may run the executable with the `debug` command line argument.
