@@ -44,7 +44,7 @@ def get_default_fps() -> int:
     refresh_rate = winapi.get_main_refresh_rate()
 
     # On some configs, this is weird. Clamp it to a reasonable range.
-    refresh_rate = clamp(refresh_rate, 30, 240)
+    refresh_rate = clamp(refresh_rate, 30, 390)
     return refresh_rate
 
 
