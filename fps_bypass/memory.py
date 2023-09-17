@@ -88,7 +88,7 @@ def signature_match(buffer: bytes, signature: Signature) -> bool:
     return True
 
 
-# Mum can we have a JIT?
+# Mom can we have a JIT?
 # No we have a JIT at home.
 # The JIT at home:
 SignatureFunction = Callable[[bytes], int | None]
