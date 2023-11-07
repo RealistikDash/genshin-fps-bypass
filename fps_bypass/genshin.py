@@ -130,8 +130,6 @@ class MemoryPointers(NamedTuple):
     estimated: bool
 
 
-# Memory location estimation (based on 7/6/2023 3.7)
-ESTIMATE_FPS_OFFSET = 93590149
 NULLPTR = bytearray(8)
 
 
@@ -152,18 +150,7 @@ def get_memory_pointers(
     buffer_offset = 0
     estimate_metric = False
 
-    # Try the estimated offset first.
-    if memory.signature_match(
-        user_assembly_buffer[
-            ESTIMATE_FPS_OFFSET : ESTIMATE_FPS_OFFSET + len(FPS_SIGNATURE)
-        ],
-        FPS_SIGNATURE,
-    ):
-        buffer_offset = ESTIMATE_FPS_OFFSET
-        estimate_metric = True
-    else:
-        # Worst case (~4s).
-        buffer_offset = memory.signature_scan(user_assembly_buffer, FPS_SIGNATURE)
+    buffer_offset = memory.signature_scan(user_assembly_buffer, FPS_SIGNATURE)
 
     if not buffer_offset:
         return None
