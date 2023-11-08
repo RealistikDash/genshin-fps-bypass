@@ -189,7 +189,6 @@ def fps_enforcement_thread() -> None:
     try:
         while enforce_fps and genshin.is_game_running():
             if (old_fps := state.get_fps()) != fps_config.target_fps:
-                state.set_vsync(False)
                 state.set_fps(fps_config.target_fps)
                 logger.debug(f"FPS change {old_fps} -> {fps_config.target_fps}.")
 

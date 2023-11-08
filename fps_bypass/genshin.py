@@ -31,21 +31,8 @@ FPS_SIGNATURE = memory.Signature(
     0xEB,
     0x05,
 )
-VSYNC_SIGNATURE = memory.Signature(
-    0xE8,
-    None,
-    None,
-    None,
-    None,
-    0x8B,
-    0xE8,
-    0x49,
-    0x8B,
-    0x1E,
-)
 
 FPS_SIGNATURE.compile()
-VSYNC_SIGNATURE.compile()
 
 
 class GenshinModules(NamedTuple):
@@ -126,8 +113,6 @@ def get_running_game() -> GenshinInfo | None:
 
 class MemoryPointers(NamedTuple):
     fps: int
-    vsync: int
-    estimated: bool
 
 
 NULLPTR = bytearray(8)
@@ -199,31 +184,8 @@ def get_memory_pointers(
 
     fps_ptr = rip + unity_player.base
 
-    # VSync.
-    rip = memory.signature_scan(unity_player_buffer, VSYNC_SIGNATURE)
-
-    if not rip:
-        return None
-
-    rel = int.from_bytes(unity_player_buffer[rip + 1 : rip + 5], "little", signed=True)
-    rip += rel + 5
-    rax = int.from_bytes(unity_player_buffer[rip + 3 : rip + 7], "little", signed=False)
-    ppvsync = rax + rip + 7 + unity_player.base
-
-    while (ptr := winapi.read_memory(genshin.handle, ppvsync, 8)) == NULLPTR:
-        time.sleep(0.2)
-
-    rip += 7
-    vsync_ptr = int.from_bytes(
-        unity_player_buffer[rip + 2 : rip + 6],
-        "little",
-        signed=False,
-    ) + int.from_bytes(ptr, "little", signed=False)
-
     return MemoryPointers(
         fps=fps_ptr,
-        vsync=vsync_ptr,
-        estimated=estimate_metric,
     )
 
 
@@ -247,13 +209,3 @@ class FPSState:
         # FPS is an i32.
         fps_bytes = winapi.read_memory(self.genshin.handle, self.pointers.fps, 4)
         return int.from_bytes(fps_bytes, "little", signed=True)
-
-    def set_vsync(self, enabled: bool) -> None:
-        # VSync is a bool.
-        vsync_bytes = b"\x01" if enabled else b"\x00"
-        winapi.write_memory(self.genshin.handle, self.pointers.vsync, vsync_bytes)
-
-    def get_vsync(self) -> bool:
-        # VSync is a bool.
-        vsync_bytes = winapi.read_memory(self.genshin.handle, self.pointers.vsync, 1)
-        return vsync_bytes == b"\x01"
