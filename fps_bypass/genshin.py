@@ -14,22 +14,13 @@ GENSHIN_CN_EXE = "YuanShen.exe"
 
 # Signatures taken from https://github.com/34736384/genshin-fps-unlock
 FPS_SIGNATURE = memory.Signature(
-    0xE8,
-    None,
-    None,
-    None,
-    None,
-    0x85,
-    0xC0,
-    0x7E,
-    0x07,
-    0xE8,
-    None,
-    None,
-    None,
-    None,
-    0xEB,
-    0x05,
+    0xB9,
+    0x3C,
+    0x00,
+    0x00,
+    0x00,
+    0xFF,
+    0x15,
 )
 
 FPS_SIGNATURE.compile()
@@ -133,7 +124,6 @@ def get_memory_pointers(
 
     # FPS.
     buffer_offset = 0
-    estimate_metric = False
 
     buffer_offset = memory.signature_scan(user_assembly_buffer, FPS_SIGNATURE)
 
@@ -142,14 +132,10 @@ def get_memory_pointers(
 
     # This is once again stolen from https://github.com/34736384/genshin-fps-unlock
     # This is just a direct Python port of the C++ code.
-    rip = buffer_offset
+    rip = buffer_offset + 5
     rip += (
-        int.from_bytes(user_assembly_buffer[rip + 1 : rip + 5], "little", signed=True)
-        + 5
-    )
-    rip += (
-        int.from_bytes(user_assembly_buffer[rip + 3 : rip + 7], "little", signed=True)
-        + 7
+        int.from_bytes(user_assembly_buffer[rip + 2 : rip + 6], "little", signed=True)
+        + 6
     )
 
     del user_assembly_buffer

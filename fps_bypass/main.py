@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 
-VERSION = (0, 1, 5)
+VERSION = (0, 1, 6)
 
 ERR_SUCCESS = 0
 ERR_FAILURE = 1
@@ -45,13 +45,6 @@ install(console=console)
 console.print(
     f"FPS Bypass v{utils.make_version_string(VERSION)}",
     style="bold underline blue",
-    highlight=False,
-)
-
-console.print(
-    "This is a beta release for the 4.2 client. FPS values exceeding your refresh "
-    "may not work.",
-    style="bold underline red",
     highlight=False,
 )
 

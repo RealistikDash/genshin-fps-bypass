@@ -93,7 +93,7 @@ def signature_match(buffer: bytes, signature: Signature) -> bool:
 # The JIT at home:
 SignatureFunction = Callable[[bytes], int | None]
 
-BASE_FUNCTION = """
+PARTIAL_SCAN_BASE_FUNCTION = """
 def _sig_scan(buffer: bytes) -> int | None:
     byte_sequence = {byte_sequence}
     sequence_offset = {sequence_offset}
@@ -114,45 +114,59 @@ def _sig_scan(buffer: bytes) -> int | None:
 
 """
 
+COMPLETE_SCAN_BASE_FUNCTION = """
+def _sig_scan(buffer: bytes) -> int | None:
+    try:
+        return buffer.index({byte_sequence})
+    except ValueError:
+        return None
+"""
+
 
 def compile_signature(signature: Signature) -> SignatureFunction:
     """Compiles a signature into a Python function."""
 
-    # Find the largest sequence of constant bytes in the signature.
-    max_sequence = [-1, b""]
-    current_sequence = [-1, b""]
+    if None in signature.pattern:  # Partial Scan
+        # Find the largest sequence of constant bytes in the signature.
+        max_sequence = [-1, b""]
+        current_sequence = [-1, b""]
 
-    for i, byte in enumerate(signature.pattern):
-        if byte is None:
-            if len(current_sequence[1]) > len(max_sequence[1]):
-                max_sequence = current_sequence
-            current_sequence = [-1, b""]
-            continue
+        for i, byte in enumerate(signature.pattern):
+            if byte is None:
+                if len(current_sequence[1]) > len(max_sequence[1]):
+                    max_sequence = current_sequence
+                current_sequence = [-1, b""]
+                continue
 
-        if current_sequence[0] == -1:
-            current_sequence[0] = i
-            current_sequence[1] = bytes([byte])
+            if current_sequence[0] == -1:
+                current_sequence[0] = i
+                current_sequence[1] = bytes([byte])
 
-        else:
-            current_sequence[1] += bytes([byte])
+            else:
+                current_sequence[1] += bytes([byte])
 
-    # Conditions
-    conditions = []
-    for i, byte in enumerate(signature.pattern):
-        if byte is None:
-            continue
+        # Conditions
+        conditions = []
+        for i, byte in enumerate(signature.pattern):
+            if byte is None:
+                continue
 
-        conditions.append(f"buffer[offset + {i}] == {byte}")
+            conditions.append(f"buffer[offset + {i}] == {byte}")
 
-    condition_str = " and ".join(conditions)
+        condition_str = " and ".join(conditions)
 
-    # Compile the function.
-    func_str = BASE_FUNCTION.format(
-        byte_sequence=max_sequence[1],
-        sequence_offset=max_sequence[0],
-        signature_length=len(signature),
-        conditions=condition_str,
-    )
+        # Compile the function.
+        func_str = PARTIAL_SCAN_BASE_FUNCTION.format(
+            byte_sequence=max_sequence[1],
+            sequence_offset=max_sequence[0],
+            signature_length=len(signature),
+            conditions=condition_str,
+        )
+    else:
+        # Convert list of bytes to bytes.
+        byte_sequence = bytes(signature.pattern)
+        func_str = COMPLETE_SCAN_BASE_FUNCTION.format(byte_sequence=repr(byte_sequence))
+
     out_vars = {}
 
     exec(func_str, {}, out_vars)
