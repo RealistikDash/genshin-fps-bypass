@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 
-VERSION = (0, 1, 3)
+VERSION = (0, 1, 6)
 
 ERR_SUCCESS = 0
 ERR_FAILURE = 1
@@ -189,7 +189,6 @@ def fps_enforcement_thread() -> None:
     try:
         while enforce_fps and genshin.is_game_running():
             if (old_fps := state.get_fps()) != fps_config.target_fps:
-                state.set_vsync(False)
                 state.set_fps(fps_config.target_fps)
                 logger.debug(f"FPS change {old_fps} -> {fps_config.target_fps}.")
 
